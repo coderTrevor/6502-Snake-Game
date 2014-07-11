@@ -1,5 +1,6 @@
 ; Little snake game written in 6502 assembly,
 ; intended for a vm like the one at http://6502asm.com or http://skilldrick.github.io/easy6502/
+; Play with Sleep: if it runs too fast / slow
 
 NewGame:
 jsr Sleep
