@@ -6,8 +6,6 @@ jsr Sleep
 ldx #$ff
 txs
 
-
-; this is a really cheesy clear-screen routine:
 ; store color 1 into address 2
 lda #01
 sta $02
@@ -72,6 +70,7 @@ sty $60 ; snake head y
 
 ldx #14
 stx $21
+ldy #15
 sty $61
 lda #01
 jsr PlotPixel
@@ -160,7 +159,7 @@ sty $07
 lda $03
 sta $04
 
-; store memory of piece 1 x at $08, piece 1 y at $10
+; store memory addr of piece 1 x at $08, piece 1 y at $10
 lda #$20
 sta $08
 lda #$60
@@ -205,8 +204,36 @@ jsr PlotPixel
 
 doneWithErasing:
 
+; get the x,y of the previous section and copy it to this section's x,y
+ldy $04
+dey
+dey
+bne notTheFirst
+
 ldx $06
 ldy $07
+;stx $20
+;sty $60
+rts
+
+notTheFirst:
+; load x,y values of prev section
+lda ($08),y
+pha
+lda ($10),y
+pha
+; overwrite x,y values of current section w/ previous x,y
+inc y
+pla
+sta ($10),y
+pla
+sta ($08),y
+
+lda $20
+sta $21
+lda $60
+sta $61
+
 rts
 
 
@@ -274,7 +301,10 @@ ldy $60
 lda #0
 iny ; increase y
 cpy #32
-beq GameOver
+bne continueDn
+jmp GameOver
+
+continueDn:
 jsr PlotPixel
 
 jsr FollowSnake
