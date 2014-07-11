@@ -83,11 +83,28 @@ lda #01
 jsr PlotPixel
 
 jsr AddSection
-jsr AddSection
-jsr AddSection
+
+jsr SpawnFruit
+
+jmp noreturn
+
+FruitXmatches:
+lda $60
+cmp $19
+bne doneCheckingForFruit
+; fruit matches
+jsr SpawnFruit
 jsr AddSection
 
+jmp doneCheckingForFruit
+
 noreturn:
+; check snake head vs fruit location
+lda $20
+cmp $18
+beq FruitXmatches
+
+doneCheckingForFruit:
 ; wait for player to press right, up, down, or left
 ; read key press
 lda $ff
@@ -136,7 +153,7 @@ jmp NewGame
 Sleep:
  ldx #2
 outerloop:
- ldy #255
+ ldy #175
 innerloop:
  dey
  bne innerloop
@@ -208,7 +225,7 @@ ldy $05
 pla
 sta $05
 ldx $05
-lda #3
+lda #1
 ; erase pixel
 jsr PlotPixel
 
@@ -364,6 +381,27 @@ dec $60
 
 rts
 
+
+
+SpawnFruit:
+; read random number for x
+lda $fe
+and #31
+; store fruit x, y at $18, $19
+sta $18
+lda $fe
+and #31
+sta $19
+lda $fe
+and #31
+
+ldx $18
+ldy $19
+; plot this sucker
+lda #$05
+jsr PlotPixel
+
+rts
 
 
 AddSection:
