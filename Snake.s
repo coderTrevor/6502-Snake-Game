@@ -82,6 +82,11 @@ sty $62
 lda #01
 jsr PlotPixel
 
+jsr AddSection
+jsr AddSection
+jsr AddSection
+jsr AddSection
+
 noreturn:
 ; wait for player to press right, up, down, or left
 ; read key press
@@ -356,6 +361,31 @@ jsr FollowSnake
 
 ; decrease y of head
 dec $60
+
+rts
+
+
+
+AddSection:
+; write x and y memory locations to $08 and $10
+lda #0
+sta $09
+sta $11
+lda #$20
+sta $08
+lda #60
+sta $10
+
+; ld section count
+ldy $03
+lda ($08),y
+pha
+lda ($10),y
+iny
+sta ($10),y
+pla
+sta ($08),y
+inc $03
 
 rts
 
