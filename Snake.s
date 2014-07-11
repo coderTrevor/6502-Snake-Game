@@ -61,7 +61,7 @@ ldy #15
 jsr PlotPixel
 
 ; put the snake part count in memory $03
-lda #02
+lda #03
 sta $03
 
 ; put snake head link 1 x at memory $20, y at $60
@@ -72,6 +72,13 @@ ldx #14
 stx $21
 ldy #15
 sty $61
+lda #01
+jsr PlotPixel
+
+ldx #13
+stx $22
+ldy #15
+sty $62
 lda #01
 jsr PlotPixel
 
@@ -207,7 +214,6 @@ doneWithErasing:
 ; get the x,y of the previous section and copy it to this section's x,y
 ldy $04
 dey
-dey
 bne notTheFirst
 
 ldx $06
@@ -217,22 +223,20 @@ ldy $07
 rts
 
 notTheFirst:
+ldy $04
+dey
+dey
 ; load x,y values of prev section
 lda ($08),y
 pha
 lda ($10),y
-pha
+;pha
 ; overwrite x,y values of current section w/ previous x,y
-inc y
-pla
+iny
+;pla
 sta ($10),y
 pla
 sta ($08),y
-
-lda $20
-sta $21
-lda $60
-sta $61
 
 rts
 
@@ -271,7 +275,10 @@ ldy $60
 ; plot black to the left of head
 lda #0
 cpx #0
-beq GameOver
+bne continueLeft
+jmp GameOver
+
+continueLeft:
 dex ; decrease x
 jsr PlotPixel
 
