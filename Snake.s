@@ -61,27 +61,29 @@ ldy #15
 jsr PlotPixel
 
 ; put the snake part count in memory $03
-lda #03
+lda #01
 sta $03
 
 ; put snake head link 1 x at memory $20, y at $60
 stx $20 ; snake head x
 sty $60 ; snake head y
 
-ldx #14
-stx $21
-ldy #15
-sty $61
-lda #01
-jsr PlotPixel
+;ldx #14
+;stx $21
+;ldy #15
+;sty $61
+;lda #01
+;jsr PlotPixel
 
-ldx #13
-stx $22
-ldy #15
-sty $62
-lda #01
-jsr PlotPixel
+;ldx #13
+;stx $22
+;ldy #15
+;sty $62
+;lda #01
+;jsr PlotPixel
 
+jsr AddSection
+jsr AddSection
 jsr AddSection
 
 jsr SpawnFruit
@@ -105,6 +107,12 @@ cmp $18
 beq FruitXmatches
 
 doneCheckingForFruit:
+
+; redraw fruit, just in case
+ldx $18
+ldy $19
+lda #5
+jsr PlotPixel
 ; wait for player to press right, up, down, or left
 ; read key press
 lda $ff
@@ -153,9 +161,23 @@ jmp NewGame
 Sleep:
  ldx #2
 outerloop:
- ldy #175
+; ldy #175
+lda #220
+sbc $03
+clc
+sbc $03
+clc
+sbc $03
+clc
+sbc $03
+clc
+sbc $03
+clc
+sbc $03
+clc
+sbc $03
 innerloop:
- dey
+sbc #1
  bne innerloop
 
 dex
@@ -274,7 +296,10 @@ ldy $60
 lda #0
 inx ; increase x
 cpx #32
-beq GameOver
+bne continueRight
+jmp GameOver
+
+continueRight:
 jsr PlotPixel
 
 
@@ -392,8 +417,6 @@ sta $18
 lda $fe
 and #31
 sta $19
-lda $fe
-and #31
 
 ldx $18
 ldy $19
@@ -405,6 +428,13 @@ rts
 
 
 AddSection:
+; do nothing if there's already 31 sections
+lda #31
+clc
+cmp $03
+bcs goOnAdding
+rts
+goOnAdding:
 ; write x and y memory locations to $08 and $10
 lda #0
 sta $09
