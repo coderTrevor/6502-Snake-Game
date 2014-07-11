@@ -1,58 +1,13 @@
+; Little snake game written in 6502 assembly,
+; intended for a vm like the one at http://6502asm.com or http://skilldrick.github.io/easy6502/
+
 NewGame:
-ldx #0
-ldy #0
 jsr Sleep
-; cheating ;)
+; reset the stack pointer
 ldx #$ff
 txs
 
-; store color 1 into address 2
-lda #01
-sta $02
-
-ldy #8
-; load color into a
-ClearScreen:
-
-lda $2
-; load 32 into x
-ldx #32
-outputColor:
-; store color into video memory
-dex
-sta $200,x
-sta $220,x
-sta $240,x
-sta $260,x
-sta $280,x
-sta $2a0,x
-sta $2c0,x
-sta $2e0,x
-sta $300,x
-sta $320,x
-sta $340,x
-sta $360,x
-sta $380,x
-sta $3a0,x
-sta $3c0,x
-sta $3e0,x
-sta $400,x
-sta $420,x
-sta $440,x
-sta $460,x
-sta $480,x
-sta $4a0,x
-sta $4c0,x
-sta $4e0,x
-sta $500,x
-sta $520,x
-sta $540,x
-sta $560,x
-sta $580,x
-sta $5a0,x
-sta $5c0,x
-sta $5e0,x
-bne outputColor
+jsr ClearScreen
 
 ; draw the snake
 lda #00
@@ -163,8 +118,8 @@ Sleep:
 outerloop:
 ; ldy #175
 lda #220
-sbc $03
-clc
+sbc $03		; subtract section count from iteration count a few times
+clc		; so the game will get faster as it goes on (instead of slower)
 sbc $03
 clc
 sbc $03
@@ -300,14 +255,13 @@ bne continueRight
 jmp GameOver
 
 continueRight:
-jsr PlotPixel
-
+;jsr PlotPixel
 
 jsr FollowSnake
 
 ; increase x of head
 inc $20
-
+jsr CheckForDeath
 
 rts
 
@@ -327,18 +281,14 @@ jmp GameOver
 
 continueLeft:
 dex ; decrease x
-jsr PlotPixel
+;jsr PlotPixel
 
 jsr FollowSnake
 
-; erase tail
-;ldx $20
-;ldy $60
-;lda #01
-;jsr PlotPixel
-
 ; decrease x of head
 dec $20
+
+jsr CheckForDeath
 
 rts
 
@@ -359,18 +309,14 @@ bne continueDn
 jmp GameOver
 
 continueDn:
-jsr PlotPixel
+;jsr PlotPixel
 
 jsr FollowSnake
 
-; erase tail
-;ldx $20
-;ldy $60
-;lda #01
-;jsr PlotPixel
-
 ; increase y of head
 inc $60
+
+jsr CheckForDeath
 
 rts
 
@@ -390,19 +336,15 @@ jmp GameOver
 
 continueUp:
 dey ; decrease y
-jsr PlotPixel
+;jsr PlotPixel
 
 
 jsr FollowSnake
 
-; erase tail
-;ldx $20
-;ldy $60
-;lda #01
-;jsr PlotPixel
-
 ; decrease y of head
 dec $60
+
+jsr CheckForDeath
 
 rts
 
@@ -458,7 +400,75 @@ inc $03
 rts
 
 
+; see if the head is on a black pixel
+; if it is, gameover. If not, draw the head
+CheckForDeath:
+; load x and y of head
+ldx $20
+ldy $60
+jsr ReadPixel
 
+cmp #0
+bne drawHead
+
+jmp GameOver
+
+drawHead:
+ldx $20
+ldy $60
+lda #0
+jsr PlotPixel
+
+rts
+
+
+
+; take x,y coords in x,y regs
+; return color in lda
+ReadPixel:
+
+; store $0200 into address 0-1
+lda #00
+sta $00
+lda #02
+sta $01
+
+; y coord is in y register, for every y, increase memory location by 32
+cpy #0
+jmp rpxCompareY
+
+rpxSubtractY:
+lda $00
+clc
+adc #$20
+bcc rpxGoOnThen
+
+;carry set, inc $01
+inc $01
+
+rpxGoOnThen:
+sta $00
+dey
+
+rpxCompareY:
+bne rpxSubtractY
+
+
+; move x to memory $02 then to y
+stx $02
+ldy $02
+
+lda ($00),Y ; read the pixel
+
+rts
+
+
+
+
+
+
+; x,y in x,y regs
+; color in a
 PlotPixel:
 pha ; push the value of a onto the stack
 
@@ -497,5 +507,55 @@ stx $02
 ldy $02
 
 sta ($00),Y ; plot the pixel
+
+rts
+
+
+ClearScreen:
+; store color 1 into address 2
+lda #01
+sta $02
+
+ldy #8
+; load color into a
+lda $2
+; load 32 into x
+ldx #32
+outputColor:
+; store color into video memory
+dex
+sta $200,x
+sta $220,x
+sta $240,x
+sta $260,x
+sta $280,x
+sta $2a0,x
+sta $2c0,x
+sta $2e0,x
+sta $300,x
+sta $320,x
+sta $340,x
+sta $360,x
+sta $380,x
+sta $3a0,x
+sta $3c0,x
+sta $3e0,x
+sta $400,x
+sta $420,x
+sta $440,x
+sta $460,x
+sta $480,x
+sta $4a0,x
+sta $4c0,x
+sta $4e0,x
+sta $500,x
+sta $520,x
+sta $540,x
+sta $560,x
+sta $580,x
+sta $5a0,x
+sta $5c0,x
+sta $5e0,x
+bne outputColor
 
 rts
