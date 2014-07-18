@@ -2,6 +2,14 @@
 ; intended for a vm like the one at http://6502asm.com or http://skilldrick.github.io/easy6502/
 ; Play with Sleep: if it runs too fast / slow
 
+; memory layout:
+; $00-$01 temp, sometimes points to video RAM base or current pixel address
+; $02 pixel color info
+; $03 snake section count 
+; $04-$1f various variables
+; $20-$5f x coords of snake sections
+; $60-$9f y coords of snake sections
+
 NewGame:
 jsr Sleep
 ; reset the stack pointer
@@ -17,27 +25,14 @@ ldy #15
 jsr PlotPixel
 
 ; put the snake part count in memory $03
-lda #01
+lda #01	; (start with just the head)
 sta $03
 
 ; put snake head link 1 x at memory $20, y at $60
 stx $20 ; snake head x
 sty $60 ; snake head y
 
-;ldx #14
-;stx $21
-;ldy #15
-;sty $61
-;lda #01
-;jsr PlotPixel
-
-;ldx #13
-;stx $22
-;ldy #15
-;sty $62
-;lda #01
-;jsr PlotPixel
-
+; add a few sections to the snake head
 jsr AddSection
 jsr AddSection
 jsr AddSection
@@ -46,16 +41,17 @@ jsr SpawnFruit
 
 jmp noreturn
 
-FruitXmatches:
-lda $60
-cmp $19
-bne doneCheckingForFruit
-; fruit matches
-jsr SpawnFruit
-jsr AddSection
+FruitXmatches: ; used when the snake's head is in the same column as the fruit piece
+	lda $60		; check snake head row against fruit row
+	cmp $19
+	bne doneCheckingForFruit
+	; fruit matches
+	jsr SpawnFruit ; spawn a new piece of fruit (erases the old one)
+	jsr AddSection	; add another piece to the snake
 
-jmp doneCheckingForFruit
+	jmp doneCheckingForFruit
 
+	; noreturn is the main game loop
 noreturn:
 ; check snake head vs fruit location
 lda $20
@@ -113,50 +109,45 @@ jsr LongSleep
 jmp NewGame
 
 
-; do a whole lotta bupkiss
+; do a little bupkiss
 Sleep:
- ldx #2
-outerloop:
-; ldy #175
-lda #220
-sbc $03		; subtract section count from iteration count a few times
-clc		; so the game will get faster as it goes on (instead of slower)
-sbc $03
-clc
-sbc $03
-clc
-sbc $03
-clc
-sbc $03
-clc
-sbc $03
-clc
-sbc $03
-innerloop:
-sbc #1
- bne innerloop
+	ldx #2
+	outerloop:
+	; ldy #175
+	lda #220
+	sbc $03		; subtract section count from iteration count a few times
+	sbc $03		; so the game will get faster as it goes on (instead of slower)
+	sbc $03
+	sbc $03
+	sbc $03
+	sbc $03
+	sbc $03
+	clc
+	innerloop:
+	sbc #1
+	 bne innerloop
 
-dex
- bne outerloop
- 
-rts
+	dex
+	 bne outerloop
+	 
+	rts
 
 
 ; do a whole lotta bupkiss
 LongSleep:
- ldx #20
-lsouterloop:
- ldy #255
-lsinnerloop:
- dey
- bne lsinnerloop
+	 ldx #20
+	lsouterloop:
+	 ldy #255
+	lsinnerloop:
+	 dey
+	 bne lsinnerloop
 
-dex
- bne lsouterloop
- 
-rts
+	dex
+	 bne lsouterloop
+	 
+	rts
 
-
+; update all the trailing snake sections to follow the head
 ;x and y registers store x and y of new head
 FollowSnake:
 ; save x and y
@@ -183,62 +174,60 @@ rts
 
 ; $04 has number of current piece
 updateSection:
-; is the current piece the last piece?
-lda $03
-cmp $04
-bne doneWithErasing
+	; is the current piece the last piece?
+	lda $03
+	cmp $04
+	bne doneWithErasing
 
-; get x and y of current piece
-lda $04
-sta $05
-ldy $05 ; put index of current piece in y
-dey
-lda ($08),y
-pha ; get x coord and push it on the stack
+	; we're updating the last tail piece so we need to erase the pixel at it's (old) position
+	; get x and y of current piece
+	lda $04 ; put index of current piece in y
+	tay
+	dey
+	lda ($08),y ; get x coord of current snake piece
+	pha ; and push it on the stack
 
-lda ($10),y
-;lda $60
-sta $05
-ldy $05
-pla
-sta $05
-ldx $05
-lda #1
-; erase pixel
-jsr PlotPixel
+	lda ($10),y ; get y coord
+	tay
+	pla
+	tax
+	lda #1
+	; erase pixel
+	jsr PlotPixel
 
-; update x and y to point to new x and y
+	; update x and y to point to new x and y
 
-doneWithErasing:
+	doneWithErasing:
 
-; get the x,y of the previous section and copy it to this section's x,y
-ldy $04
-dey
-bne notTheFirst
+	; get the x,y of the previous section and copy it to this section's x,y
+	ldy $04
+	dey
+	bne notTheFirst ; does the copying, except for the head
 
-ldx $06
-ldy $07
-;stx $20
-;sty $60
-rts
+	; copy new x and y to head piece
+	;ldx $06
+	;ldy $07
+	;stx $20
+	;sty $60
+	rts
 
 notTheFirst:
-ldy $04
-dey
-dey
-; load x,y values of prev section
-lda ($08),y
-pha
-lda ($10),y
-;pha
-; overwrite x,y values of current section w/ previous x,y
-iny
-;pla
-sta ($10),y
-pla
-sta ($08),y
+	ldy $04
+	dey
+	dey
+	; load x,y values of prev section
+	lda ($08),y
+	pha
+	lda ($10),y
+	;pha
+	; overwrite x,y values of current section w/ previous x,y
+	iny
+	;pla
+	sta ($10),y
+	pla
+	sta ($08),y
 
-rts
+	rts
 
 
 AdvanceSnakeRight:
@@ -471,92 +460,92 @@ rts
 ; x,y in x,y regs
 ; color in a
 PlotPixel:
-pha ; push the value of a onto the stack
+	pha ; push the value of a onto the stack
 
-; store $0200 into address 0-1
-lda #00
-sta $00
-lda #02
-sta $01
+	; store $0200 (vid mem address) into address 0-1
+	lda #00
+	sta $00
+	lda #02
+	sta $01
 
-; y coord is in y register, for every y, increase memory location by 32
-cpy #0
-jmp compareY
+	; y coord is in y register, for every y, increase memory location by 32
+	cpy #0
+	jmp compareY
 
-subtractY:
-lda $00
-clc
-adc #$20
-bcc goOnThen
+	subtractY:
+	lda $00
+	clc
+	adc #$20
+	bcc goOnThen
 
-;carry set, inc $01
-inc $01
+	;carry set, inc $01
+	inc $01
 
-goOnThen:
-sta $00
-dey
+	goOnThen:
+	sta $00
+	dey
 
-compareY:
-bne subtractY
+	compareY:
+	bne subtractY
 
 
-;restore color 
-pla
+	;restore color 
+	pla
 
-; move x to memory $02 then to y
-stx $02
-ldy $02
+	; move x to memory $02 then to y
+	stx $02
+	ldy $02
 
-sta ($00),Y ; plot the pixel
+	sta ($00),Y ; plot the pixel
 
-rts
+	rts
 
 
 ClearScreen:
-; store color 1 into address 2
-lda #01
-sta $02
+	; store color 1 into address 2
+	lda #01
+	sta $02
 
-ldy #8
-; load color into a
-lda $2
-; load 32 into x
-ldx #32
-outputColor:
-; store color into video memory
-dex
-sta $200,x
-sta $220,x
-sta $240,x
-sta $260,x
-sta $280,x
-sta $2a0,x
-sta $2c0,x
-sta $2e0,x
-sta $300,x
-sta $320,x
-sta $340,x
-sta $360,x
-sta $380,x
-sta $3a0,x
-sta $3c0,x
-sta $3e0,x
-sta $400,x
-sta $420,x
-sta $440,x
-sta $460,x
-sta $480,x
-sta $4a0,x
-sta $4c0,x
-sta $4e0,x
-sta $500,x
-sta $520,x
-sta $540,x
-sta $560,x
-sta $580,x
-sta $5a0,x
-sta $5c0,x
-sta $5e0,x
-bne outputColor
+	ldy #8
+	; load color into a
+	lda $2
+	; load 32 into x
+	ldx #32
+	outputColor:
+	; store color into video memory
+	dex
+	sta $200,x
+	sta $220,x
+	sta $240,x
+	sta $260,x
+	sta $280,x
+	sta $2a0,x
+	sta $2c0,x
+	sta $2e0,x
+	sta $300,x
+	sta $320,x
+	sta $340,x
+	sta $360,x
+	sta $380,x
+	sta $3a0,x
+	sta $3c0,x
+	sta $3e0,x
+	sta $400,x
+	sta $420,x
+	sta $440,x
+	sta $460,x
+	sta $480,x
+	sta $4a0,x
+	sta $4c0,x
+	sta $4e0,x
+	sta $500,x
+	sta $520,x
+	sta $540,x
+	sta $560,x
+	sta $580,x
+	sta $5a0,x
+	sta $5c0,x
+	sta $5e0,x
+	bne outputColor
 
-rts
+	rts
